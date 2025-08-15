@@ -48,10 +48,10 @@ export default function OrderDetailPage() {
         </div>
 
         <div>
-          <p><strong>Canal de vente :</strong> {order.store}</p>
+          <p><strong>Boutique :</strong> {order.store}</p>
           <p><strong>Paiement :</strong> {order.payments?.[0]?.status}</p>
           <p><strong>Expédition :</strong> {order.fulfillments?.[0]?.shipped_at ? "Envoyé" : "En attente"}</p>
-            <p><strong>Total :</strong> {formatCurrency(total, currency, locale)}</p>        </div>
+          <p><strong>Total :</strong> {formatCurrency(total, currency, locale)}</p>        </div>
         </div>
     </div>
   );

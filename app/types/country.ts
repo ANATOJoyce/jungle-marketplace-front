@@ -7,6 +7,6 @@ export interface Country {
   num_code: string;      // code numérique
   name: string;          // nom (indexé)
   display_name: string;  // nom complet affiché
-  region?: Region | string;  // id ou objet Region référencé
+  region?: Region ;  // id ou objet Region référencé
   metadata?: Record<string, unknown>;
 }

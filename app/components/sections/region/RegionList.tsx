@@ -1,4 +1,5 @@
-import { Currency, Region } from "~/types/country";
+import { Currency } from "~/types/currency";
+import { Region } from "~/types/region";
 
 interface RegionListProps {
   regions: Region[];

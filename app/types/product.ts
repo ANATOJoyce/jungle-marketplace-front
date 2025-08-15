@@ -39,7 +39,7 @@ export interface Product {
   metadata?: Record<string, unknown>;
   owner?: User;
   store?: Store; // modifié d’après ta remarque
-  variants?: ProductVariant[];
+  variants: ProductVariant[];
   type?: ProductType;
   tags?: ProductTag[];
   options?: ProductOption[];
@@ -47,5 +47,5 @@ export interface Product {
   collection?: ProductCollection;
   categories?: ProductCategory[];
   deleted_at?: string | null;
- sales_channels?: SalesChannel[];
+ sales_channels: SalesChannel[];
 }

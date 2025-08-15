@@ -1,126 +1,122 @@
-// src/components/regions/RegionForm.tsx
-import { useState } from 'react';
-import { Currency, Region } from '~/types/country';
+import React, { useState, useEffect } from 'react';
+import { Country } from '~/types/country';
+import { Currency } from '~/types/currency';
+import { Region } from '~/types/region';
 
 interface RegionFormProps {
   initialData?: Partial<Region>;
   currencies: Currency[];
-  onSubmit: (data: Partial<Region>) => Promise<void>;
-  onCancel?: () => void;
-  isLoading?: boolean;
+  onSubmit: (data: Partial<Region>) => void;
+  onCancel: () => void;
 }
-export const RegionForm = ({
-  initialData = {},
-  currencies = [],
-  onSubmit,
-  onCancel,
-  isLoading = false
-}: RegionFormProps) => {
-  const [formData, setFormData] = useState<Partial<Region>>(initialData);
-  const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
 
-  const validateForm = () => {
-    const errors: Record<string, string> = {};
-    if (!formData.name) errors.name = 'Le nom est requis';
-    if (!formData.currency_code) errors.currencyCode = 'La devise est requise';
-    setLocalErrors(errors);
-    return Object.keys(errors).length === 0;
+export const RegionForm: React.FC<RegionFormProps> = ({ initialData, currencies, onSubmit, onCancel }) => {
+  const [name, setName] = useState(initialData?.name || '');
+  const [currencyCode, setCurrencyCode] = useState(initialData?.currency_code || '');
+  const [automaticTaxes, setAutomaticTaxes] = useState(initialData?.automatic_taxes ?? true);
+
+const [selectedCountries, setSelectedCountries] = useState<string[]>(
+  initialData?.countries || [] // c’est un tableau d’IDs
+);
+
+  const [allCountries, setAllCountries] = useState<Country[]>([]);
+
+  useEffect(() => {
+    const fetchCountries = async () => {
+      try {
+        const res = await fetch('http://localhost:3000/regions/countries');
+        const data = await res.json();
+        console.log('Countries fetched:', data);
+        setAllCountries(data);
+      } catch (error) {
+        console.error('Erreur lors du chargement des pays :', error);
+      }
+    };
+
+    fetchCountries();
+  }, []);
+const handleSubmit = (e: React.FormEvent) => {
+  e.preventDefault();
+
+  const data: Partial<Region> = {
+    id: initialData?.id,
+    name,
+    currency_code: currencyCode,
+    automatic_taxes: automaticTaxes,
+    countries: selectedCountries, //  envoyer un tableau d'IDs
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateForm()) return;
+  onSubmit(data);
+};
 
-    try {
-      await onSubmit(formData);
-    } catch (err) {
-      setLocalErrors({
-        form: err instanceof Error ? err.message : 'Erreur inconnue'
-      });
-    }
-  };
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-xl font-semibold mb-4">
-        {initialData?.id ? 'Modifier la région' : 'Créer une région'}
-      </h2>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium mb-1">Nom de la région</label>
+        <input
+          type="text"
+          className="w-full border rounded px-3 py-2"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+        />
+      </div>
 
-      {localErrors.form && (
-        <div className="mb-4 text-red-500">{localErrors.form}</div>
-      )}
+      <div>
+        <label className="block text-sm font-medium mb-1">Devise</label>
+        <select
+          value={currencyCode}
+          onChange={(e) => setCurrencyCode(e.target.value)}
+          required
+        >
+          <option value="">-- Sélectionner une devise --</option>
+          {currencies.map((cur) => (
+            <option key={cur.code} value={cur.code}>
+              {cur.name} ({cur.symbol})
+            </option>
+          ))}
+        </select>
+      </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Nom de la région *
-          </label>
-          <input
-            type="text"
-            value={formData.name || ''}
-            onChange={(e) => setFormData({...formData, name: e.target.value})}
-            className={`w-full p-2 border rounded ${localErrors.name ? 'border-red-500' : 'border-gray-300'}`}
-            disabled={isLoading}
-          />
-          {localErrors.name && <p className="mt-1 text-sm text-red-500">{localErrors.name}</p>}
-        </div>
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={automaticTaxes}
+          onChange={(e) => setAutomaticTaxes(e.target.checked)}
+          className="h-4 w-4"
+        />
+        <label>Appliquer automatiquement les taxes</label>
+      </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Taux de taxe (%)
-          </label>
-          <input
-            type="number"
-            value={formData.tax_rate || ''}
-            onChange={(e) => setFormData({...formData, tax_rate: Number(e.target.value)})}
-            className="w-full p-2 border border-gray-300 rounded"
-            min="0"
-            max="100"
-            step="0.1"
-            disabled={isLoading}
-          />
-        </div>
+      <div>
+        <label className="block text-sm font-medium mb-1">Pays associés</label>
+        <select
+          multiple
+          value={selectedCountries}
+          onChange={(e) =>
+            setSelectedCountries(Array.from(e.target.selectedOptions, (option) => option.value))
+          }
+        >
+          {allCountries.map((country) => (
+            <option key={country.id} value={country.id}>
+              {country.name}
+            </option>
+          ))}
+        </select>
+        <p className="text-sm text-gray-500 mt-1">
+          Maintenez Ctrl (Windows) ou Cmd (Mac) pour sélectionner plusieurs pays
+        </p>
+      </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Devise *
-          </label>
-          <select
-            value={formData.currency_code || ''}
-            onChange={(e) => setFormData({...formData, currency_code: e.target.value})}
-            className={`w-full p-2 border rounded ${localErrors.currencyCode ? 'border-red-500' : 'border-gray-300'}`}
-            disabled={isLoading}
-          >
-            <option value="">Sélectionnez une devise</option>
-            {currencies.map((currency) => (
-              <option key={currency.code} value={currency.code}>
-                {currency.name} ({currency.symbol})
-              </option>
-            ))}
-          </select>
-          {localErrors.currencyCode && <p className="mt-1 text-sm text-red-500">{localErrors.currencyCode}</p>}
-        </div>
-
-        <div className="flex justify-end space-x-3 pt-4">
-          {onCancel && (
-            <button
-              type="button"
-              onClick={onCancel}
-              disabled={isLoading}
-              className="px-4 py-2 border rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-            >
-              Annuler
-            </button>
-          )}
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-          >
-            {isLoading ? 'Envoi en cours...' : initialData?.id ? 'Mettre à jour' : 'Créer'}
-          </button>
-        </div>
-      </form>
-    </div>
+      <div className="flex justify-end gap-2">
+        <button type="button" onClick={onCancel} className="px-4 py-2 bg-gray-300 rounded">
+          Annuler
+        </button>
+        <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded">
+          {initialData ? 'Mettre à jour' : 'Créer'}
+        </button>
+      </div>
+    </form>
   );
 };

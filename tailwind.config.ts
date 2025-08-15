@@ -4,7 +4,11 @@ module.exports = {
     "./app/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        brand: '#fcb343', // ta couleur unique
+      },
+    },
   },
   plugins: [],
 }

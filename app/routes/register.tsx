@@ -1,85 +1,87 @@
+import type { ActionFunctionArgs } from "@remix-run/node";
+import { json, redirect } from "@remix-run/node";
+import { Form, useActionData } from "@remix-run/react";
 import { useState } from "react";
-import { useNavigate, Form, useActionData, redirect, json } from "@remix-run/react";
-import type { ActionFunction } from "@remix-run/node";
 import { FiLogIn } from "react-icons/fi";
+import { getSession, commitSession } from "~/utils/session.server";
 
-type ActionData = {
-  error?: string;
-};
 
-export const action: ActionFunction = async ({ request }) => {
+
+
+export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
-  const first_name = formData.get("first_name");
-  const last_name = formData.get("last_name");
-  const email = formData.get("email");
-  const phone = formData.get("phone");
-  const password = formData.get("password");
-  const confirmPassword = formData.get("confirmPassword");
 
-  if (
-    typeof email !== "string" ||
-    typeof password !== "string" ||
-    typeof confirmPassword !== "string" ||
-    !email ||
-    !password ||
-    !confirmPassword
-  ) {
-    return json(
-      { error: "Tous les champs obligatoires doivent être remplis." },
-      { status: 400 }
-    );
+  const first_name = formData.get("first_name")?.toString();
+  const last_name = formData.get("last_name")?.toString();
+  const email = formData.get("email")?.toString();
+  const phone = formData.get("phone")?.toString();
+  const password = formData.get("password")?.toString();
+  const confirmPassword = formData.get("confirmPassword")?.toString();
+
+  if (!email || !password || !confirmPassword) {
+    return json({ error: "Tous les champs obligatoires doivent être remplis." }, { status: 400 });
   }
 
   if (password !== confirmPassword) {
-    return json(
-      { error: "Les mots de passe ne correspondent pas." },
-      { status: 400 }
-    );
+    return json({ error: "Les mots de passe ne correspondent pas." }, { status: 400 });
   }
 
   try {
-    const res = await fetch(
-      `${process.env.PUBLIC_NEST_API_URL}/auth/register`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          first_name,
-          last_name,
-          email,
-          phone,
-          password,
-        }),
-      }
-    );
+    const res = await fetch(`${process.env.PUBLIC_NEST_API_URL}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ first_name, last_name, email, phone, password }),
+    });
 
     const data = await res.json();
 
     if (!res.ok) {
-      return json({ error: data.message || "Erreur d'inscription" }, { status: 400 });
+      return json({ error: data.message || "Erreur d'inscription" }, { status: res.status });
     }
 
-    return redirect("/register-shop");
+    if (data.access_token) {
+      const session = await getSession(request.headers.get("Cookie"));
+      session.set("access_token", data.access_token);
+      session.set("user", data.user);
+
+      console.log(data)
+
+      return redirect("/register-shop", {
+        headers: {
+          "Set-Cookie": await commitSession(session),
+        },
+      });
+    }
+
+    return json({ error: "Token manquant après inscription." }, { status: 500 });
   } catch (err) {
     return json({ error: "Erreur réseau ou serveur." }, { status: 500 });
   }
-};
+}
 
 export default function RegisterVendor() {
-  const actionData = useActionData<ActionData>();
-  const navigate = useNavigate();
+  const actionData = useActionData<typeof action>();
+  const [formData, setFormData] = useState({
+    first_name: "",
+    last_name: "",
+    email: "",
+    phone: "",
+    password: "",
+    confirmPassword: "",
+  });
+
   const [phoneError, setPhoneError] = useState<string | null>(null);
-  const [phone, setPhone] = useState("");
 
-  const isPhoneFormatValid = (value: string) => /^\+\d{8,15}$/.test(value);
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value.trim();
-    setPhone(val);
-    if (val.startsWith("+") && !isPhoneFormatValid(val)) {
-      setPhoneError("Format de téléphone invalide. Utilisez l’indicatif pays avec + et sans espaces.");
-    } else {
-      setPhoneError(null);
+    if (name === "phone") {
+      if (value.startsWith("+") && !/^\+\d{8,15}$/.test(value)) {
+        setPhoneError("Format de téléphone invalide. Ex: +22870310380");
+      } else {
+        setPhoneError(null);
+      }
     }
   };
 
@@ -93,33 +95,36 @@ export default function RegisterVendor() {
         )}
 
         <Form method="post" className="space-y-4" noValidate>
-          <div>
-            <label className="block mb-1 text-sm font-medium">Prénom</label>
-            <input type="text" name="first_name" required className="w-full px-4 py-2 border rounded-md" />
-          </div>
-
-          <div>
-            <label className="block mb-1 text-sm font-medium">Nom</label>
-            <input type="text" name="last_name" required className="w-full px-4 py-2 border rounded-md" />
-          </div>
-
-          <div>
-            <label className="block mb-1 text-sm font-medium">Email</label>
-            <input type="email" name="email" required className="w-full px-4 py-2 border rounded-md" />
-          </div>
+          {[
+            { label: "Prénom", name: "first_name" },
+            { label: "Nom", name: "last_name" },
+            { label: "Email", name: "email", type: "email" },
+          ].map(({ label, name, type = "text" }) => (
+            <div key={name}>
+              <label className="block mb-1 text-sm font-medium">{label}</label>
+              <input
+                type={type}
+                name={name}
+                value={(formData as any)[name]}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 border rounded-md"
+              />
+            </div>
+          ))}
 
           <div>
             <label className="block mb-1 text-sm font-medium">Téléphone</label>
             <input
               type="tel"
               name="phone"
-              value={phone}
-              onChange={handlePhoneChange}
+              value={formData.phone}
+              onChange={handleChange}
               className="w-full px-4 py-2 border rounded-md"
             />
-            {phone.startsWith("+") && (
+            {formData.phone.startsWith("+") && (
               <p className="text-xs text-gray-500 mt-1">
-                Entrez votre numéro avec indicatif pays, sans espaces, ex: +22870310380
+                Ex: +22870310380
               </p>
             )}
             {phoneError && <p className="text-red-500 text-sm mt-1">{phoneError}</p>}
@@ -130,6 +135,8 @@ export default function RegisterVendor() {
             <input
               type="password"
               name="password"
+              value={formData.password}
+              onChange={handleChange}
               required
               className="w-full px-4 py-2 border rounded-md"
             />
@@ -140,6 +147,8 @@ export default function RegisterVendor() {
             <input
               type="password"
               name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleChange}
               required
               className="w-full px-4 py-2 border rounded-md"
             />

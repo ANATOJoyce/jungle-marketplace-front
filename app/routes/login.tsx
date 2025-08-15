@@ -1,77 +1,90 @@
-import { useState } from "react";
-import type { ActionFunction } from "@remix-run/node";
-import { useNavigate, Form, useActionData, redirect, json } from "@remix-run/react";
+import { json, redirect } from "@remix-run/node";
+import type { ActionFunction, LoaderFunction } from "@remix-run/node";
+import { Form, useActionData } from "@remix-run/react";
+import { getSession, commitSession } from "~/utils/session.server";
 import { FiLogIn } from "react-icons/fi";
 
-type ActionData = {
-  error?: string;
+
+
+export const loader: LoaderFunction = async ({ request }) => {
+  const session = await getSession(request.headers.get("Cookie"));
+  const access_token = session.get("token");
+  console.log(access_token)
+
+  // Si un access_token existe dans la session, rediriger vers le tableau de bord
+  if (access_token) {
+    return redirect("/dashboard");
+  }
+
+  // Si aucun token n'est trouvé, continuer la requête (par exemple, afficher la page de login)
+  return json({});
 };
 
 export const action: ActionFunction = async ({ request }) => {
   const formData = await request.formData();
-  const login = formData.get("login");
+  const username = formData.get("login");
   const password = formData.get("password");
 
-  if (
-    typeof login !== "string" ||
-    typeof password !== "string" ||
-    !login ||
-    !password
-  ) {
-    return json({ error: "Identifiant et mot de passe requis" }, { status: 400 });
+  // Vérifier la validité des champs
+  if (typeof username !== "string" || typeof password !== "string") {
+    return json({ error: "Champs invalides." }, { status: 400 });
   }
 
-  // Appel API backend login
-  const res = await fetch(`${process.env.PUBLIC_NEST_API_URL}/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ login, password }),
-  });
+  try {
+    // Effectuer la requête d'authentification
+    const res = await fetch(`${process.env.PUBLIC_NEST_API_URL}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
 
-  const data = await res.json();
+    const data = await res.json();
 
-  if (!res.ok) {
-    return json({ error: data.message || "Identifiants invalides" }, { status: 400 });
+    // Si la réponse de l'API est incorrecte, renvoyer un message d'erreur
+    if (!res.ok) {
+      return json({ error: data.message || "Identifiants invalides." }, { status: 401 });
+    }
+
+    // Récupérer la session
+    const session = await getSession(request.headers.get("Cookie"));
+
+    // Sauvegarder le token dans la session
+    session.set("token", data.access_token);
+
+    // Déterminer la redirection en fonction du rôle de l'utilisateur
+    const userRole = data.user?.role || data.role;
+    let redirectTo = "/dashboard";
+
+    if (userRole === "admin") {
+      redirectTo = "/admin/dashboard";
+    }
+
+    // Retourner la redirection avec le cookie de session mis à jour
+    return redirect(redirectTo, {
+      headers: {
+        "Set-Cookie": await commitSession(session),
+      },
+    });
+  } catch (err) {
+    // Gestion des erreurs
+    return json({ error: "Erreur de connexion au serveur." }, { status: 500 });
   }
-
-  // TODO: gérer la session / cookie sécurisé ici (à ajouter selon ton besoin)
-
-  return redirect("/dashboard");
 };
 
+//  Composant de la page
+
 export default function LoginPage() {
-  const actionData = useActionData<ActionData>();
-  const navigate = useNavigate();
-  const [login, setLogin] = useState("");
-  const [phoneError, setPhoneError] = useState<string | null>(null);
-
-  const isPhoneFormatValid = (value: string) => {
-    return /^\+\d{8,15}$/.test(value);
-  };
-
-  const handleLoginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value.trim();
-    setLogin(val);
-
-    if (val.startsWith("+") && !isPhoneFormatValid(val)) {
-      setPhoneError(
-        "Format de téléphone invalide. Utilisez l’indicatif pays avec + et sans espaces (ex: +22870310380)."
-      );
-    } else {
-      setPhoneError(null);
-    }
-  };
+  const actionData = useActionData<typeof action>();
+  const error = actionData?.error;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-white px-4">
       <div className="max-w-md w-full p-6 shadow-[0_0_20px_#a3a29fff] rounded-2xl bg-white">
         <h2 className="text-xl font-bold mb-4 text-center">Connexion</h2>
 
-        {actionData?.error && (
-          <p className="text-red-600 mb-4 text-center">{actionData.error}</p>
-        )}
+        {error && <p className="text-red-600 mb-4 text-center">{error}</p>}
 
-        <Form method="post" className="space-y-4" noValidate>
+        <Form method="post" className="space-y-4">
           <div>
             <label className="block mb-1 text-sm font-medium">
               Identifiant (email / téléphone)
@@ -79,17 +92,9 @@ export default function LoginPage() {
             <input
               type="text"
               name="login"
-              value={login}
-              onChange={handleLoginChange}
               className="w-full px-4 py-2 border rounded-md"
               required
             />
-            {login.startsWith("+") && (
-              <p className="text-xs text-gray-500 mt-1">
-                Entrez votre numéro avec indicatif pays, sans espaces, ex: +22870310380
-              </p>
-            )}
-            {phoneError && <p className="text-red-500 text-sm mt-1">{phoneError}</p>}
           </div>
 
           <div>
@@ -104,7 +109,6 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            disabled={!!phoneError}
             className="w-full py-3 mt-6 bg-orange-600 hover:bg-orange-700 text-white"
           >
             Se connecter

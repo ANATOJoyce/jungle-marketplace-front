@@ -15,9 +15,9 @@ export default function HomePage() {
           </div>
           <div className="flex items-center space-x-4">
             <button 
-            onClick={() => window.location.href = '/register-shop'}
+            onClick={() => window.location.href = '/register'}
             className="flex items-center text-gray-600 hover:text-[#fbb344] transition-colors duration-300">
-              <FiLogIn className="mr-2" /> Créer ma boutique
+              <FiLogIn className="mr-2" /> Créer un compte
             </button>
             <button 
               onClick={() => window.location.href = '/login'}
@@ -199,7 +199,7 @@ export default function HomePage() {
         </section>
 
         {/* CTA Section */}
-        <section className="bg-[#fbb344] py-16 md:py-24">
+        <section className="bg-[#0c2444] py-16 md:py-24">
           <div className="container mx-auto px-4 text-center">
             <img
               src="/Jungle_logo05.png"
@@ -225,7 +225,7 @@ export default function HomePage() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-[#faa533] text-white py-8">
+      <footer className="bg-#0c2444 text-#0c2444 py-8">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center mb-4 md:mb-0">

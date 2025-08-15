@@ -1,94 +1,145 @@
+import {
+  json,
+  redirect,
+  type LoaderFunction,
+  type ActionFunction,
+} from "@remix-run/node";
+import {
+  useLoaderData,
+  Form,
+  useActionData,
+  useNavigation,
+  Link,
+} from "@remix-run/react";
+import { getSession } from "~/utils/session.server";
 import { useEffect, useState } from "react";
-import { useAuth } from "~/hooks/useAuth";
-import { useNavigate } from "@remix-run/react";
 
-export default function SettingsPage() {
-  const { user, isAuthenticated } = useAuth();
-  const navigate = useNavigate();
 
-  const [formData, setFormData] = useState({
-    first_name: "",
-    last_name: "",
-    email: "",
-    phone: "",
+type ActionData = {
+  error?: string;
+  success?: boolean;
+};
+
+type LoaderData = {
+  user: {
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone?: string;
+  };
+};
+
+
+
+export const loader: LoaderFunction = async ({ request }) => {
+  const session = await getSession(request.headers.get("Cookie"));
+  const token = session.get("token");
+  console.log(token)
+  if (!token) return redirect("/login");
+
+  console.log("API URL:", process.env.NEST_API_URL);
+
+  const res = await fetch(`${process.env.NEST_API_URL}/users/profile`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
   });
 
-  const [loading, setLoading] = useState(true);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState("");
+  if (!res.ok) {
+    throw new Response("Erreur lors de la récupération du profil", {
+      status: res.status,
+    });
+  }
+
+  const user = await res.json();
+
+  return json<LoaderData>({ user });
+};
+
+
+
+type JwtPayload = {
+  sub: string;
+  email: string;
+  // ajoute d'autres champs si besoin
+};
+
+export const action: ActionFunction = async ({ request }) => {
+  const session = await getSession(request.headers.get("Cookie"));
+  const token = session.get("token");
+
+  if (!token) return redirect("/login");
+
+
+  const formData = await request.formData();
+  const updatedData = {
+    first_name: formData.get("first_name"),
+    last_name: formData.get("last_name"),
+    email: formData.get("email"),
+    phone: formData.get("phone"),
+  };
+
+  console.log("API URL:", process.env.NEST_API_URL);
+
+  const res = await fetch(`${process.env.NEST_API_URL}/users/me`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(updatedData),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    console.error("Erreur API:", err);
+    return json({ error: "Échec de la mise à jour" }, { status: 400 });
+  }
+
+  return json({ success: true });
+};
+
+
+export default function SettingsPage() {
+  const { user } = useLoaderData<LoaderData>();
+  const actionData = useActionData<ActionData>();
+  const [formData, setFormData] = useState({
+    first_name: user.first_name,
+    last_name: user.last_name,
+    email: user.email,
+    phone: user.phone || "",
+  });
+
+  const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      navigate("/login");
-      return;
+    if (actionData?.success) {
+      setShowSuccess(true);
+      const timer = setTimeout(() => setShowSuccess(false), 3000);
+      return () => clearTimeout(timer);
     }
-
-    const fetchUser = async () => {
-      const token = localStorage.getItem("access_token");
-      try {
-        const res = await fetch(`${window.ENV.PUBLIC_NEST_API_URL}/auth/profile`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!res.ok) throw new Error("Erreur lors de la récupération du profil");
-
-        const data = await res.json();
-        setFormData({
-          first_name: data.first_name || "",
-          last_name: data.last_name || "",
-          email: data.email || "",
-          phone: data.phone || "",
-        });
-      } catch (err) {
-        setError("Erreur de chargement.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUser();
-  }, [isAuthenticated, navigate]);
+  }, [actionData]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }));
   };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const token = localStorage.getItem("access_token");
-
-    try {
-      const res = await fetch(`${window.ENV.PUBLIC_NEST_API_URL}/auth/profile`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!res.ok) throw new Error("Échec de la mise à jour");
-
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
-    } catch (err) {
-      setError("Impossible de sauvegarder les modifications.");
-    }
-  };
-
-  if (loading) return <p className="p-4 text-yellow-600">Chargement des informations...</p>;
 
   return (
     <div className="max-w-2xl space-y-6">
       <h2 className="text-2xl font-semibold text-orange-600">Mon profil</h2>
 
-      {error && <p className="text-red-500 font-medium">{error}</p>}
-      {success && <p className="text-green-600 font-medium">✔️ Modifications enregistrées</p>}
+      {actionData?.error && (
+        <p className="text-red-500 font-medium">{actionData.error}</p>
+      )}
+      {showSuccess && (
+        <p className="text-green-600 font-medium">Modifications enregistrées</p>
+      )}
 
-      <form
-        onSubmit={handleSubmit}
+      <Form
+        method="post"
         className="bg-white border border-yellow-300 p-6 rounded-xl shadow space-y-6"
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -139,14 +190,16 @@ export default function SettingsPage() {
         </div>
 
         <div className="pt-4">
-          <button
-            type="submit"
-            className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded font-semibold shadow"
-          >
-            Enregistrer les modifications
-          </button>
+                     <td className="px-4 py-3">
+                      <Link
+                        to={`/dashboard/stores/${user.first_name}/edit`}
+                        className="inline-block px-3 py-1 bg-orange-500 text-white rounded hover:bg-orange-600 text-sm"
+                      >
+                        Modifier
+                      </Link>
+                    </td>
         </div>
-      </form>
+      </Form>
     </div>
   );
 }

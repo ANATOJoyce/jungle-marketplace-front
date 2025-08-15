@@ -13,7 +13,7 @@ interface CustomerGroup {
 
 export async function loader({ request }: LoaderFunctionArgs) {
   try {
-    const response = await fetch(`${process.env.NEST_API_URL}/customer-groups`);
+    const response = await fetch(`${process.env.NEST_API_URL}/customer/customer-groups`);
     
     if (!response.ok) {
       return json({ error: "Failed to fetch customer groups" }, { status: 400 });

@@ -20,7 +20,7 @@ export function useAuth() {
 
     if (!token) {
       setUser(null);
-      setLoading(false); // ✅ fin du chargement même si pas de token
+      setLoading(false); //  fin du chargement même si pas de token
       return;
     }
 

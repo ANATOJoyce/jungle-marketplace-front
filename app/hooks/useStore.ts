@@ -1,11 +1,18 @@
 // hooks/useStores.ts
 import { useEffect, useState } from "react";
+import { useAuth } from "./useAuth";
 
 export function useStores() {
+  const { isAuthenticated } = useAuth();
   const [stores, setStores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
+
     const token = localStorage.getItem("access_token");
     if (!token) return;
 
@@ -29,7 +36,7 @@ export function useStores() {
     };
 
     fetchStores();
-  }, []);
+  }, [isAuthenticated]);
 
   return { stores, loading };
 }

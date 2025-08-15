@@ -32,7 +32,7 @@ export default function SalesChannelsPage() {
   // --- FETCH CHANNELS ---
   const fetchChannels = async () => {
     try {
-      const res = await fetch(`${window.ENV.PUBLIC_NEST_API_URL}/sales-channels`, { headers });
+      const res = await fetch(`${window.ENV.PUBLIC_NEST_API_URL}/sales-channel`, { headers });
       if (!res.ok) throw new Error("Erreur serveur");
       const data = await res.json();
       setChannels(data);
@@ -67,8 +67,8 @@ export default function SalesChannelsPage() {
   const handleSave = async () => {
     try {
       const url = editingId
-        ? `${window.ENV.PUBLIC_NEST_API_URL}/sales-channels/${editingId}`
-        : `${window.ENV.PUBLIC_NEST_API_URL}/sales-channels`;
+        ? `${window.ENV.PUBLIC_NEST_API_URL}/sales-channel${editingId}`
+        : `${window.ENV.PUBLIC_NEST_API_URL}/sales-channel`;
       const method = editingId ? "PUT" : "POST";
 
       const res = await fetch(url, {
@@ -91,7 +91,7 @@ export default function SalesChannelsPage() {
   const toggleDisable = async (id: string, is_disabled: boolean) => {
     try {
       const res = await fetch(
-        `${window.ENV.PUBLIC_NEST_API_URL}/sales-channels/${id}/toggle-disable`,
+        `${window.ENV.PUBLIC_NEST_API_URL}/sales-channel/${id}/toggle-disable`,
         {
           method: "PATCH",
           headers,
@@ -109,7 +109,7 @@ export default function SalesChannelsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Supprimer définitivement ?")) return;
     try {
-      const res = await fetch(`${window.ENV.PUBLIC_NEST_API_URL}/sales-channels/${id}`, {
+      const res = await fetch(`${window.ENV.PUBLIC_NEST_API_URL}/sales-channel/${id}`, {
         method: "DELETE",
         headers,
       });

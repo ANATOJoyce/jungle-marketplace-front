@@ -1,8 +1,8 @@
-// types/user.ts
 export interface User {
   id: string;
-  email?: string;
-  firstname?: string;
-  lastname?: string;
-  // autres champs utiles
+  first_name: string;
+  last_name: string;
+  email: string;
+  role: string;
+  phone: string
 }

@@ -6,6 +6,6 @@ export interface Region {
   name: string;
   currency_code: string;
   automatic_taxes: boolean;
-  countries?: Country[];
+  countries: string[];
   metadata?: Record<string, unknown>;
 }
