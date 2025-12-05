@@ -1,111 +1,98 @@
 import { json, redirect } from "@remix-run/node";
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
-import { Form, Link, useLoaderData } from "@remix-run/react";
-import { LogoJungle } from "~/components/auth/LogoJungle";
-import { destroySession, getSession } from "~/utils/session.server";
+import { getSession, destroySession } from "~/utils/session.server";
 import { useEffect, useState } from "react";
+import { Link } from "@remix-run/react";
+import { Check, LogOut } from "lucide-react";
+import { LogoJungle } from "~/components/auth/LogoJungle";
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader({ request }: { request: Request }) {
   const session = await getSession(request.headers.get("Cookie"));
   return json(
     { success: true },
-    {
-      headers: {
-        "Set-Cookie": await destroySession(session),
-      },
-    }
+    { headers: { "Set-Cookie": await destroySession(session) } }
   );
 }
 
-export async function action({ request }: ActionFunctionArgs) {
+export async function action({ request }: { request: Request }) {
   const session = await getSession(request.headers.get("Cookie"));
   return redirect("/login", {
-    headers: {
-      "Set-Cookie": await destroySession(session),
-    },
+    headers: { "Set-Cookie": await destroySession(session) },
   });
 }
 
 export default function LogoutPage() {
-  const { success } = useLoaderData<typeof loader>();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [countdown, setCountdown] = useState(5);
 
   useEffect(() => {
-    if (success) {
-      // Suppression immédiate des tokens
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
-    }
-  }, [success]);
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          window.location.href = "/login";
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
-  const handleLogout = async () => {
-    setIsLoggingOut(true);
-    // Attendre la redirection après la déconnexion
-    setTimeout(() => {
-      window.location.href = "/login"; // Redirection explicite après déconnexion
-    }, 1000); // Délai pour afficher l'animation ou un message de succès
-  };
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-white p-6">
+      <div className="bg-white border border-gray-100 rounded-2xl shadow-lg max-w-md w-full overflow-hidden">
+        {/* En-tête */}
+        <div className="p-8 text-center border-b border-gray-100">
+          <div className="w-16 h-16 bg-[#fbb344]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Check className="text-[#fbb344]" size={36} />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Déconnexion réussie
+          </h1>
+          <p className="text-gray-500 text-sm mt-1">
+            Vous serez redirigé dans {countdown}s...
+          </p>
+        </div>
 
-  if (success) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
-        <div className="w-full max-w-md text-center">
-          <LogoJungle size="lg" className="mx-auto mb-8" />
+        {/* Corps */}
+        <div className="p-8 text-center space-y-5">
+          <LogoJungle className="mx-auto" size="md" />
 
-          <div className="bg-white p-8 rounded-xl shadow-sm">
-            <h1 className="text-2xl font-bold text-gray-800 mb-4">
-              Déconnexion réussie
-            </h1>
+          <p className="text-gray-600 text-sm">
+            Votre session a été fermée avec succès.  
+            À bientôt sur notre plateforme !
+          </p>
 
-            <p className="text-gray-600 mb-6">
-              Vous avez été déconnecté avec succès. Vous allez bientôt être redirigé.
-            </p>
+          {/* Barre de progression */}
+          <div className="w-full bg-gray-100 rounded-full h-2">
+            <div
+              className="bg-[#fbb344] h-2 rounded-full transition-all duration-1000 ease-linear"
+              style={{ width: `${((5 - countdown) / 5) * 100}%` }}
+            />
+          </div>
 
+          {/* Actions */}
+          <div className="flex flex-col gap-3 mt-4">
             <Link
               to="/login"
-              className="block w-full bg-orange-600 hover:bg-orange-700 text-white py-2 px-4 rounded-lg text-center mb-4"
+              className="bg-[#fbb344] text-white font-semibold py-3 rounded-lg hover:bg-[#e5a32f] transition"
             >
               Se reconnecter
             </Link>
 
             <Link
               to="/"
-              className="block w-full border border-orange-600 text-orange-600 hover:bg-orange-50 py-2 px-4 rounded-lg text-center"
+              className="border border-[#fbb344] text-[#fbb344] font-semibold py-3 rounded-lg hover:bg-[#fbb344]/10 transition"
             >
-              Retour à l'accueil
+              Retour à l’accueil
             </Link>
           </div>
         </div>
+
+        {/* Pied */}
+        <p className="text-xs text-center text-gray-400 pb-4">
+          Vos données ont été supprimées en toute sécurité.
+        </p>
       </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
-      <Form method="POST" className="w-full max-w-md text-center">
-        <div className="bg-white p-8 rounded-xl shadow-sm">
-          <LogoJungle size="lg" className="mx-auto mb-8" />
-
-          <h1 className="text-2xl font-bold text-gray-800 mb-4">
-            Confirmer la déconnexion
-          </h1>
-
-          <button
-            type="button"
-            onClick={handleLogout} // Ajout de la gestion de la déconnexion ici
-            className="w-full bg-orange-600 hover:bg-orange-700 text-white py-2 px-4 rounded-lg mb-4"
-          >
-            {isLoggingOut ? "Déconnexion en cours..." : "Se déconnecter"}
-          </button>
-
-          <Link
-            to="/"
-            className="block w-full border border-orange-600 text-orange-600 hover:bg-orange-50 py-2 px-4 rounded-lg text-center"
-          >
-            Annuler
-          </Link>
-        </div>
-      </Form>
     </div>
   );
 }

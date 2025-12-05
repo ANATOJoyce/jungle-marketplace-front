@@ -37,6 +37,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <head>
+ 
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <Meta />
@@ -53,15 +54,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
   
 }
 
-export async function loader({}: LoaderFunctionArgs) {
-  return json({
-    ENV: {
-      PUBLIC_NEST_API_URL: process.env.PUBLIC_NEST_API_URL,
-    },
-  });
+
+
+export function loader(){
+  const ENV = {
+    CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
+    CLOUDINARY_UPLOAD_PRESET: process.env.CLOUDINARY_UPLOAD_PRESET,
+
+  }
+  return json({ ENV })
 }
+
 export default function App() {
-  const { ENV } = useLoaderData<typeof loader>();
+  const data = useLoaderData<typeof loader>();
 
   return (
     <html lang="en">
@@ -72,10 +77,16 @@ export default function App() {
         <Links />
       </head>
       <body>
+        {/* Cloudinary widget script */}
+        <script
+          src="https://upload-widget.cloudinary.com/latest/global/all.js"
+          type="text/javascript"
+        ></script>
+
         {/* Injection des variables d'environnement dans window */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `window.ENV = ${JSON.stringify(ENV)};`,
+            __html: `window.ENV = ${JSON.stringify(data.ENV)};`,
           }}
         />
 

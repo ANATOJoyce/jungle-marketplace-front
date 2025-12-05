@@ -1,13 +1,9 @@
 import { CustomerGroup } from "./customer-group";
 
 export interface Customer {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
+  _id: string;
   phone: string;
-  has_account: boolean;
-  metadata?: Record<string, any>;
+  name: string;
   created_by?: string;
   customers?: CustomerGroup[];
   groups?: string[];    // ou CustomerGroupCustomer[]

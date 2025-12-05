@@ -43,7 +43,7 @@ export const action: ActionFunction = async ({ request, params }) => {
     return json({ error: "Action inconnue." }, { status: 400 });
   }
 
-  const res = await fetch(`${process.env.PUBLIC_NEST_API_URL}/store/${params.storeId}`, {
+  const res = await fetch(`${process.env.NEST_API_URL}/store/${params.id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status: newStatus }),
@@ -53,7 +53,7 @@ export const action: ActionFunction = async ({ request, params }) => {
     return json({ error: `Erreur lors de la mise à jour de la boutique.` }, { status: 500 });
   }
 
-  return redirect(`/stores/${params.storeId}?success=status_mis_a_jour`);
+  return redirect(`/admin/dashboard/stores/${params.id}?success=status_mis_a_jour`);
 };
 
 // --- COMPOSANT ---
@@ -75,16 +75,20 @@ export default function StoreDetails() {
 
   return (
     <div className="p-6 max-w-3xl mx-auto bg-white shadow rounded-xl mt-6">
-      <h1 className="text-2xl font-bold mb-4">Détails de la Boutique</h1>
+      <h1 className="text-2xl font-bold mb-4 text-orange-600">Détails de la Boutique</h1>
 
       <div className="space-y-2">
-        <p><strong>ID:</strong> {store.id}</p>
+        <p><strong>IDccccc:</strong> {store.id}</p>
         <p><strong>Nom:</strong> {store.name}</p>
         <p><strong>Canal de vente par défaut:</strong> {store.default_sales_channel_id || "—"}</p>
         <p><strong>Région par défaut:</strong> {store.default_region_id || "—"}</p>
         <p><strong>Emplacement par défaut:</strong> {store.default_location_id || "—"}</p>
         <p><strong>Devises supportées:</strong> {store.supported_currencies.join(", ") || "—"}</p>
-        <p><strong>Statut:</strong> {isInactive ? "Inactif" : "Actif"}</p>
+        <p><strong>Statut:</strong> 
+          <span className={`ml-2 px-2 py-1 rounded text-sm ${isInactive ? 'bg-orange-100 text-orange-800' : 'bg-orange-100 text-orange-800'}`}>
+            {isInactive ? "Inactif" : "Actif"}
+          </span>
+        </p>
         <p><strong>Créé le:</strong> {formatDate(store.createdAt)}</p>
         <p><strong>Mis à jour le:</strong> {formatDate(store.updatedAt)}</p>
       </div>
@@ -95,7 +99,7 @@ export default function StoreDetails() {
             <input type="hidden" name="actionType" value="activate" />
             <button
               type="submit"
-              className="px-6 py-3 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+              className="px-6 py-3 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50 transition-colors"
               disabled={isSubmitting}
             >
               {isSubmitting ? "Activation..." : "Activer la boutique"}
@@ -106,7 +110,7 @@ export default function StoreDetails() {
             <input type="hidden" name="actionType" value="deactivate" />
             <button
               type="submit"
-              className="px-6 py-3 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+              className="px-6 py-3 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50 transition-colors"
               disabled={isSubmitting}
             >
               {isSubmitting ? "Désactivation..." : "Désactiver la boutique"}

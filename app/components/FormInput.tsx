@@ -16,27 +16,38 @@ type BaseProps = {
   className?: string;
   inputClassName?: string;
   error?: string;
+  min?: number;
 };
 
+// --- Input (text, number, etc., sauf radio)
 type InputProps = BaseProps & {
-  type?: React.HTMLInputTypeAttribute;
+  type?: Exclude<React.HTMLInputTypeAttribute, "radio">;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   options?: never;
 };
 
+// --- Radio
+type RadioProps = BaseProps & {
+  type: "radio";
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  options: Option[];
+};
+
+// --- Select
 type SelectProps = BaseProps & {
   type: "select";
   onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   options: Option[];
 };
 
+// --- Textarea
 type TextareaProps = BaseProps & {
   type: "textarea";
   onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   options?: never;
 };
 
-type Props = InputProps | SelectProps | TextareaProps;
+type Props = InputProps | RadioProps | SelectProps | TextareaProps;
 
 export function FormInput(props: Props) {
   const {
@@ -51,6 +62,7 @@ export function FormInput(props: Props) {
     className = "",
     inputClassName = "",
     error,
+    min,
   } = props;
 
   const baseInputClasses =
@@ -58,6 +70,7 @@ export function FormInput(props: Props) {
   const disabledClasses = disabled ? "bg-gray-100 cursor-not-allowed" : "";
   const errorClasses = error ? "border-red-500 focus:ring-red-500" : "border-gray-300";
 
+  // --- SELECT ---
   if (type === "select") {
     const { options, onChange } = props as SelectProps;
     return (
@@ -69,12 +82,11 @@ export function FormInput(props: Props) {
         <select
           id={name}
           name={name}
-          value={value}
-          defaultValue={defaultValue}
           onChange={onChange}
           required={required}
           disabled={disabled}
           className={`${baseInputClasses} ${disabledClasses} ${errorClasses} ${inputClassName}`}
+          {...(value !== undefined ? { value } : { defaultValue })}
         >
           <option value="">Sélectionnez une option</option>
           {options.map((option) => (
@@ -88,6 +100,7 @@ export function FormInput(props: Props) {
     );
   }
 
+  // --- TEXTAREA ---
   if (type === "textarea") {
     const { onChange } = props as TextareaProps;
     return (
@@ -99,19 +112,49 @@ export function FormInput(props: Props) {
         <textarea
           id={name}
           name={name}
-          value={value}
-          defaultValue={defaultValue}
           onChange={onChange}
           required={required}
           disabled={disabled}
           placeholder={placeholder}
           className={`${baseInputClasses} ${disabledClasses} ${errorClasses} ${inputClassName} min-h-[100px]`}
+          {...(value !== undefined ? { value } : { defaultValue })}
         />
         {error && <p className="text-sm text-red-600 mt-1">{error}</p>}
       </div>
     );
   }
 
+  // --- RADIO ---
+  if (type === "radio") {
+    const { options, onChange } = props as RadioProps;
+    return (
+      <div className={`flex flex-col ${className}`}>
+        <label className="mb-1 font-semibold">
+          {label}
+          {required && <span className="text-red-500 ml-1">*</span>}
+        </label>
+        <div className="flex flex-col gap-2">
+          {options.map((option) => (
+            <label key={option.value} className="inline-flex items-center">
+              <input
+                type="radio"
+                name={name}
+                value={option.value}
+                onChange={onChange}
+                required={required}
+                disabled={disabled}
+                className="mr-2"
+              />
+              {option.label}
+            </label>
+          ))}
+        </div>
+        {error && <p className="text-sm text-red-600 mt-1">{error}</p>}
+      </div>
+    );
+  }
+
+  // --- INPUT (default) ---
   const { onChange } = props as InputProps;
   return (
     <div className={`flex flex-col ${className}`}>
@@ -123,13 +166,13 @@ export function FormInput(props: Props) {
         id={name}
         name={name}
         type={type}
-        value={value}
-        defaultValue={defaultValue}
         onChange={onChange}
         required={required}
         disabled={disabled}
         placeholder={placeholder}
+        min={min}
         className={`${baseInputClasses} ${disabledClasses} ${errorClasses} ${inputClassName}`}
+        {...(value !== undefined ? { value } : { defaultValue })}
       />
       {error && <p className="text-sm text-red-600 mt-1">{error}</p>}
     </div>

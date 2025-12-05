@@ -9,16 +9,17 @@ import { ProductCategory } from "./product-category";
 import { User } from "./user";
 import { Store } from "./store";
 import { SalesChannel } from "./sales-channel";
+import { Order } from "./order";
 
 export enum ProductStatus {
   DRAFT = 'draft',
-  PROPOSED = 'proposed',
   PUBLISHED = 'published',
-  REJECTED = 'rejected',
+
 }
 
 export interface Product {
-  id: string;
+  imageUrl: any;
+  _id: string;
   title: string;
   handle: string;
   subtitle?: string;
@@ -30,6 +31,9 @@ export interface Product {
   length?: number;
   height?: number;
   width?: number;
+  order: Order;
+  price: number;
+  createdAt: string;
   origin_country?: string;
   hs_code?: string;
   mid_code?: string;
@@ -38,14 +42,7 @@ export interface Product {
   external_id?: string;
   metadata?: Record<string, unknown>;
   owner?: User;
-  store?: Store; // modifié d’après ta remarque
+  storeId?: Store; // modifié d’après ta remarque
   variants: ProductVariant[];
-  type?: ProductType;
-  tags?: ProductTag[];
-  options?: ProductOption[];
-  images?: ProductImage[];
-  collection?: ProductCollection;
-  categories?: ProductCategory[];
-  deleted_at?: string | null;
- sales_channels: SalesChannel[];
+  totalStock: number;
 }

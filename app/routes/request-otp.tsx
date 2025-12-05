@@ -13,7 +13,7 @@ export default function RequestOtp() {
     setLoading(true);
     setSuccess(false);
 
-      const res = await fetch(`${window.ENV.PUBLIC_NEST_API_URL}/auth/request-otp`, {
+      const res = await fetch(`${window.ENV.PUBLIC_NEST_API_URL}/auth/verify-access`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),//request-otp
@@ -54,15 +54,6 @@ export default function RequestOtp() {
           </form>
         )}
 
-        <div className="text-center mt-6 text-gray-600">
-          Vous avez déjà un compte ?{" "}
-          <a 
-            href="/login" 
-            className="text-orange-600 font-medium hover:underline flex items-center justify-center"
-          >
-            <FiLogIn className="mr-1" /> Se connecter
-          </a>
-        </div>
       </div>
     </div>
   );

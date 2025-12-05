@@ -9,11 +9,11 @@ import {
   Form,
   useActionData,
   useNavigation,
-  Link,
+  useNavigate,
 } from "@remix-run/react";
 import { getSession } from "~/utils/session.server";
 import { useEffect, useState } from "react";
-
+import { Button } from "~/components/ui/Button";
 
 type ActionData = {
   error?: string;
@@ -29,39 +29,25 @@ type LoaderData = {
   };
 };
 
-
-
 export const loader: LoaderFunction = async ({ request }) => {
   const session = await getSession(request.headers.get("Cookie"));
   const token = session.get("token");
-  console.log(token)
+
   if (!token) return redirect("/login");
 
-  console.log("API URL:", process.env.NEST_API_URL);
-
   const res = await fetch(`${process.env.NEST_API_URL}/users/profile`, {
+    method: "GET",
     headers: {
       Authorization: `Bearer ${token}`,
     },
   });
 
   if (!res.ok) {
-    throw new Response("Erreur lors de la récupération du profil", {
-      status: res.status,
-    });
+    throw new Response("Échec de récupération de l'utilisateur", { status: 500 });
   }
 
   const user = await res.json();
-
   return json<LoaderData>({ user });
-};
-
-
-
-type JwtPayload = {
-  sub: string;
-  email: string;
-  // ajoute d'autres champs si besoin
 };
 
 export const action: ActionFunction = async ({ request }) => {
@@ -69,7 +55,6 @@ export const action: ActionFunction = async ({ request }) => {
   const token = session.get("token");
 
   if (!token) return redirect("/login");
-
 
   const formData = await request.formData();
   const updatedData = {
@@ -79,10 +64,8 @@ export const action: ActionFunction = async ({ request }) => {
     phone: formData.get("phone"),
   };
 
-  console.log("API URL:", process.env.NEST_API_URL);
-
-  const res = await fetch(`${process.env.NEST_API_URL}/users/me`, {
-    method: "PATCH",
+  const res = await fetch(`${process.env.NEST_API_URL}/users/profile`, {
+    method: "PUT",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
@@ -91,18 +74,19 @@ export const action: ActionFunction = async ({ request }) => {
   });
 
   if (!res.ok) {
-    const err = await res.text();
-    console.error("Erreur API:", err);
     return json({ error: "Échec de la mise à jour" }, { status: 400 });
   }
 
   return json({ success: true });
 };
 
-
-export default function SettingsPage() {
+/* ---------------- COMPONENT EN MODAL ---------------- */
+export default function SettingsModal() {
   const { user } = useLoaderData<LoaderData>();
   const actionData = useActionData<ActionData>();
+  const navigation = useNavigation();
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     first_name: user.first_name,
     last_name: user.last_name,
@@ -111,95 +95,144 @@ export default function SettingsPage() {
   });
 
   const [showSuccess, setShowSuccess] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  const isSubmitting = navigation.state === "submitting";
 
   useEffect(() => {
     if (actionData?.success) {
       setShowSuccess(true);
-      const timer = setTimeout(() => setShowSuccess(false), 3000);
+      setHasChanges(false);
+      const timer = setTimeout(() => setShowSuccess(false), 4000);
       return () => clearTimeout(timer);
     }
   }, [actionData]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [e.target.name]: e.target.value,
+      [name]: value,
     }));
+    setHasChanges(true);
+  };
+
+  const handleReset = () => {
+    setFormData({
+      first_name: user.first_name,
+      last_name: user.last_name,
+      email: user.email,
+      phone: user.phone || "",
+    });
+    setHasChanges(false);
   };
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <h2 className="text-2xl font-semibold text-orange-600">Mon profil</h2>
+    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 relative overflow-y-auto max-h-[90vh]">
+        {/* bouton fermer */}
+        <button
+          onClick={() => navigate(-1)}
+          className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
+        >
+          ✕
+        </button>
 
-      {actionData?.error && (
-        <p className="text-red-500 font-medium">{actionData.error}</p>
-      )}
-      {showSuccess && (
-        <p className="text-green-600 font-medium">Modifications enregistrées</p>
-      )}
+        <h1 className="text-2xl font-bold mb-6 text-center text-orange-600">
+          Modifier mon profil
+        </h1>
 
-      <Form
-        method="post"
-        className="bg-white border border-yellow-300 p-6 rounded-xl shadow space-y-6"
-      >
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* messages d’état */}
+        <div className="space-y-4 mb-6">
+          {actionData?.error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">
+              {actionData.error}
+            </div>
+          )}
+          {showSuccess && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-green-700 text-sm">
+              Modifications enregistrées avec succès
+            </div>
+          )}
+        </div>
+
+        {/* formulaire */}
+        <Form method="post" className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold mb-1">Prénom *</label>
+              <input
+                name="first_name"
+                value={formData.first_name}
+                onChange={handleChange}
+                className="w-full border rounded-lg p-2"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-1">Nom *</label>
+              <input
+                name="last_name"
+                value={formData.last_name}
+                onChange={handleChange}
+                className="w-full border rounded-lg p-2"
+                required
+              />
+            </div>
+          </div>
+
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Prénom</label>
+            <label className="block text-sm font-semibold mb-1">Email *</label>
             <input
-              name="first_name"
-              value={formData.first_name}
+              name="email"
+              type="email"
+              value={formData.email}
               onChange={handleChange}
-              className="w-full border border-yellow-400 rounded px-3 py-2"
+              className="w-full border rounded-lg p-2"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Nom</label>
+            <label className="block text-sm font-semibold mb-1">Téléphone</label>
             <input
-              name="last_name"
-              value={formData.last_name}
+              name="phone"
+              type="tel"
+              value={formData.phone}
               onChange={handleChange}
-              className="w-full border border-yellow-400 rounded px-3 py-2"
-              required
+              className="w-full border rounded-lg p-2"
+              placeholder="+33 6 12 34 56 78"
             />
           </div>
-        </div>
 
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
-          <input
-            name="email"
-            type="email"
-            value={formData.email}
-            onChange={handleChange}
-            className="w-full border border-yellow-400 rounded px-3 py-2"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Téléphone</label>
-          <input
-            name="phone"
-            type="tel"
-            value={formData.phone}
-            onChange={handleChange}
-            className="w-full border border-yellow-400 rounded px-3 py-2"
-          />
-        </div>
-
-        <div className="pt-4">
-                     <td className="px-4 py-3">
-                      <Link
-                        to={`/dashboard/stores/${user.first_name}/edit`}
-                        className="inline-block px-3 py-1 bg-orange-500 text-white rounded hover:bg-orange-600 text-sm"
-                      >
-                        Modifier
-                      </Link>
-                    </td>
-        </div>
-      </Form>
+          {/* actions */}
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleReset}
+              disabled={!hasChanges || isSubmitting}
+            >
+              Réinitialiser
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => navigate(-1)}
+              disabled={isSubmitting}
+            >
+              Annuler
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSubmitting || !hasChanges}
+              className="bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600"
+            >
+              {isSubmitting ? "Enregistrement..." : "Enregistrer"}
+            </Button>
+          </div>
+        </Form>
+      </div>
     </div>
   );
 }
