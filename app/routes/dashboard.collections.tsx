@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { json, LoaderFunction } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import { MoreHorizontal, Filter, ChevronLeft, ChevronRight, Folder, Search } from 'lucide-react';
-import { getAuthToken } from '~/utils/auth.server';
+import { getSession } from '~/utils/session.server';
 
 // Types pour vos données
 interface Product {
@@ -30,12 +30,12 @@ interface LoaderData {
 }
 export const loader: LoaderFunction = async ({ request }) => {
   const apiUrl = process.env.PUBLIC_NEST_API_URL || "http://localhost:3000";
-  
+    const session = await getSession(request.headers.get("Cookie"));
+    const token = session.get("token");
   try {
     const response = await fetch(`${apiUrl}/products/collections`, {
-      headers: {
-        'Authorization': `Bearer ${await getAuthToken(request)}`
-      }
+        headers: { Authorization: `Bearer ${token}` },
+
     });
 
     if (!response.ok) {
